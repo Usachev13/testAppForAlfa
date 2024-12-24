@@ -4,6 +4,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -14,38 +15,28 @@ import java.util.Arrays;
 @Component
 public class LoggingAspect {
 
-    private final CacheService cacheService;
+    private final RequestLogRepository requestLogRepository;
 
-    public LoggingAspect(CacheService cacheService) {
-        this.cacheService = cacheService;
+    public LoggingAspect(RequestLogRepository requestLogRepository) {
+        this.requestLogRepository = requestLogRepository;
     }
 
-    @Around("@annotation(getMapping) && @annotation(requestLog)")
+
+    @Around(value = "@annotation(getMapping) && @annotation(requestLog)", argNames = "joinPoint,getMapping,requestLog")
     public Object cacheAndLogRequest(ProceedingJoinPoint joinPoint, GetMapping getMapping, RequestLog requestLog) throws Throwable {
-        String methodName = joinPoint.getSignature().getName();
-        Object[] args = joinPoint.getArgs();
-        System.out.println("метод который используется " + methodName);
-        System.out.println("с аргументами " + Arrays.toString(args));
-
-        // Создаем уникальный ключ для кэша
-        String cacheKey = methodName + Arrays.hashCode(args);
-
-        // Проверяем кэш Redis
-        Object cachedResult = cacheService.getFromCache(cacheKey);
-        if (cachedResult != null) {
-            System.out.println("Ответ из кэша Redis для метода: " + methodName);
-            return cachedResult;
-        }
-
-        // Выполняем метод и сохраняем результат
         Object result = joinPoint.proceed();
 
-        // Кэшируем результат и сохраняем в MongoDB
-        cacheService.saveToCache(cacheKey, result);
-        System.out.println("данные добавленные в кэш: " + result);
-        cacheService.saveToMongo(methodName, result, args);
-        System.out.println("данные добавленные в базу данных: метод " + methodName + ", с аргументами " + Arrays.toString(args));
+        // Сохраняем в MongoDB через репозиторий
+        String methodName = joinPoint.getSignature().getName();
+        Object[] args = joinPoint.getArgs();
 
+        RequestLogEntry entry = new RequestLogEntry();
+        entry.setMethodName(methodName);
+        entry.setArgs(Arrays.toString(args));
+        entry.setResult(result);
+        requestLogRepository.save(entry);
+
+        System.out.println("Сохранено в MongoDB: " + entry);
         return result;
     }
 }
