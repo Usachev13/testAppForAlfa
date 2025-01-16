@@ -1,15 +1,26 @@
 package com.testWorkForAlfa.app;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class Controller {
-    @LogGet
+
+    private final HelloService helloService;
+
+    public Controller(HelloService helloService) {
+        this.helloService = helloService;
+    }
+
+    @RequestLog
     @GetMapping("/hello")
     public String hello(@RequestParam String name) {
-        return "Hello " + name;
+        return helloService.hello(name);
     }
+
+    @RequestLog
+    @PostMapping("/bye")
+    public String bye(@RequestParam String name) {return "Bye " + name;}
 }
+
+
