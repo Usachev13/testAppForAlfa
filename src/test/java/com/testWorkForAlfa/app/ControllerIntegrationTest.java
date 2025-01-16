@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class ControllerIntegrationTest {
     @Container
-    private static final GenericContainer<?> redis = new GenericContainer<>("redis:latest").withExposedPorts(6379);
+    private static final GenericContainer<?> redis = new GenericContainer<>("redis:latest");
     @Container
     private static final MongoDBContainer mongo = new MongoDBContainer("mongo:6.0");
     @Autowired
@@ -35,21 +35,10 @@ public class ControllerIntegrationTest {
     @Autowired
     private MongoTemplate mongoTemplate;
 
-    @BeforeAll
-    static void setup() {
-        String host = redis.getHost();
-        int port = redis.getMappedPort(6379);
-
-        System.setProperty("spring.redis.host", redis.getHost());
-        System.setProperty("spring.redis.port", redis.getMappedPort(6379).toString());
-    }
     @Test
     void shouldCacheAndSaveToMongoDB() throws Exception {
         //вызов контроллера
         String param = "test";
-        mockMvc.perform(get("/hello").param("name", param))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Hello " + param));
         mockMvc.perform(get("/hello").param("name", param))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Hello " + param));
